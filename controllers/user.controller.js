@@ -137,20 +137,21 @@ const getStats = async (req, res, next) => {
         $project: { _id: 0 },
       },
     ]);
-    return myResponse(res, 200, "stats users", users);
+    return myResponse(res, 200, "stats users", users[0]);
   } catch (error) {
     next(error);
   }
 };
 const changePassword = async (req, res, next) => {
   try {
-    const id = req.user.id;
+    const id = req.user.user.id;
     const { oldPassword, newPassword } = req.body;
     const user = await userModele.findById(id);
-    const isMatch = user.passwordCompare(oldPassword);
+    const isMatch = await user.passwordCompare(oldPassword);
     if (!isMatch) throw new MyError(400, "Old password is wrong");
     if (oldPassword === newPassword)
       throw new MyError(400, "Old password is same with new");
+    user.refreshToken = null;
     user.password = newPassword;
     await user.save();
     return myResponse(res, 200, "Yor password was changed");
@@ -161,12 +162,12 @@ const changePassword = async (req, res, next) => {
 const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
-    const emailInDb = userModele.findOne({ email });
-    if (!emailInDb) throw new MyError(404, "Email not found");
-    createOTP(emailInDb);
-    await emailInDb.save();
+    const user = await userModele.findOne({ email });
+    if (!user) throw new MyError(404, "Email not found");
+    createOTP(user);
+    await user.save();
     sendOTP(email, user.otpCode);
-    return myResponse(res, 200, "Your OTP Code was send to your email");
+    return myResponse(res, 200, "Your OTP Code was send to your email plse use it in /reset-pasword");
   } catch (error) {
     next(error);
   }
@@ -201,5 +202,6 @@ export {
   getMe,
   getStats,
   changePassword,
+  resetPassword,
   forgotPassword,
 };

@@ -9,6 +9,7 @@ import {
   register,
   verifyRegister,
   forgotPassword,
+  resetPassword,
 } from "../controllers/user.controller.js";
 import {
   validator,
@@ -16,8 +17,10 @@ import {
   refreshTokenValidator,
 } from "../middlewares/validator.middleware.js";
 import {
+  changePasswordSchema,
   emailSchema,
   loginSchema,
+  resetPasswordSchema,
   userSchema,
 } from "../schemas/user.schema.js";
 
@@ -29,11 +32,16 @@ userRouter.post("/logout", refreshTokenValidator, logout);
 userRouter.post("/refresh", refreshTokenValidator, refresh);
 userRouter.get("/me", accessTokenValidator, getMe);
 userRouter.get("/users", getStats);
-userRouter.post(
+userRouter.put(
   "/change-password",
   accessTokenValidator,
-  validator(changePassword),
+  validator(changePasswordSchema),
   changePassword,
 );
 userRouter.post("/forgot-password", validator(emailSchema), forgotPassword);
+userRouter.post(
+  "/reset-password",
+  validator(resetPasswordSchema),
+  resetPassword,
+);
 export default userRouter;

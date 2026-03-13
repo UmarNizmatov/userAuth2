@@ -4,6 +4,7 @@ const postSchema = new mongoose.Schema(
   {
     author_id: {
       type: mongoose.Schema.Types.ObjectId,
+      ref: "user",
       required: true,
     },
     title: {
