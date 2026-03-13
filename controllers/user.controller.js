@@ -14,12 +14,12 @@ const createOTP = (user) => {
 const register = async (req, res, next) => {
   try {
     const { email } = req.body;
-    const password = crypto.randomUUID()
+    const password = crypto.randomUUID();
     const sameuser = await userModele.findOne({ email });
     let user;
 
     if (!sameuser) {
-      user = await userModele.create({ email, password: "tempPassword123" });
+      user = await userModele.create({ email, password });
     } else {
       if (sameuser.isVerified) {
         throw new MyError(400, "This email is already verified");
