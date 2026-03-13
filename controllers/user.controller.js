@@ -83,6 +83,7 @@ const login = async (req, res, next) => {
       email: user.email,
       accessToken,
       refreshToken,
+      id: user.id,
     });
   } catch (error) {
     next(error);
@@ -117,4 +118,88 @@ const getMe = async (req, res, next) => {
     next(error);
   }
 };
-export { register, verifyRegister, login, refresh, logout, getMe };
+const getStats = async (req, res, next) => {
+  try {
+    const users = await userModele.aggregate([
+      {
+        $group: {
+          _id: null,
+          verified: {
+            $sum: { $cond: [{ $eq: ["$isVerified", true] }, 1, 0] },
+          },
+          unverified: {
+            $sum: { $cond: [{ $eq: ["$isVerified", false] }, 1, 0] },
+          },
+          total: { $sum: 1 },
+        },
+      },
+      {
+        $project: { _id: 0 },
+      },
+    ]);
+    return myResponse(res, 200, "stats users", users);
+  } catch (error) {
+    next(error);
+  }
+};
+const changePassword = async (req, res, next) => {
+  try {
+    const id = req.user.id;
+    const { oldPassword, newPassword } = req.body;
+    const user = await userModele.findById(id);
+    const isMatch = user.passwordCompare(oldPassword);
+    if (!isMatch) throw new MyError(400, "Old password is wrong");
+    if (oldPassword === newPassword)
+      throw new MyError(400, "Old password is same with new");
+    user.password = newPassword;
+    await user.save();
+    return myResponse(res, 200, "Yor password was changed");
+  } catch (error) {
+    next(error);
+  }
+};
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const emailInDb = userModele.findOne({ email });
+    if (!emailInDb) throw new MyError(404, "Email not found");
+    createOTP(emailInDb);
+    await emailInDb.save();
+    sendOTP(email, user.otpCode);
+    return myResponse(res, 200, "Your OTP Code was send to your email");
+  } catch (error) {
+    next(error);
+  }
+};
+const resetPassword = async (req, res, next) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    let user = await userModele.findOne({ email });
+    if (!user) throw new MyError(404, "Email not found");
+    const userotpCode = user.otpCode;
+    const userotpExpireTime = user.otpExpireTime;
+    user.otpCode = null;
+    user.otpExpireTime = null;
+    if (!user) throw new MyError(404, "User not found");
+    if (!(Date.now() <= userotpExpireTime))
+      throw new MyError(400, "Your OTP Code is expired");
+    if (userotpCode !== otp) throw new MyError(400, "Your OTP Code is  wrong");
+    user.password = newPassword;
+    user.refreshToken = null;
+    await user.save();
+    return myResponse(res, 200, "Your password was changed");
+  } catch (error) {
+    next(error);
+  }
+};
+export {
+  register,
+  verifyRegister,
+  login,
+  refresh,
+  logout,
+  getMe,
+  getStats,
+  changePassword,
+  forgotPassword,
+};
